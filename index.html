@@ -476,9 +476,13 @@ Best regards,
 
     function handleFileSelection() {
         const fileUrl = fileSelect.value;
-        downloadLink.dataset.url = fileUrl;
-        downloadLink.style.display = 'block';
-        confirmDownloadButton.style.display = 'block';
+        if (fileUrl) {
+            downloadLink.dataset.url = fileUrl;
+            downloadLink.style.display = 'block';
+        } else {
+            downloadLink.style.display = 'none';
+        }
+        confirmDownloadButton.style.display = fileUrl ? 'block' : 'none';
         uploadSection.style.display = 'none';
         tabSection.style.display = 'none';
         sheetSelectionSection.style.display = 'none';
