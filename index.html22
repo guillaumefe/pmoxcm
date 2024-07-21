@@ -354,8 +354,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
     <script>
-        const EMAILS = ["guillaume.ferron@gmail.com", "another.pmo@example.com"];
-        const CC_EMAILS = ["cc.email@example.com", "another.cc@example.com"];
+        const EMAILS = [];
+        const CC_EMAILS = [];
 
         const EMAIL_TEMPLATE = `
 Dear PMO Team,
@@ -379,9 +379,9 @@ Best regards,
 
         const FILE_OPTIONS = [
           {
-            name: "Action Plan",
-            url: "https://onepoint365.sharepoint.com/:x:/r/sites/Drive/Documents%20partages/General/02%20Offres%20de%20services/03-%20COMPLIANCE%20OFFICE/01.%20DORA/A%20CLASSER/Dora%20Maturity%20Model/Dora%20Maturity%20Model.xlsx",
-            defaultSheet: "Score INC" // Ajouter l'attribut defaultSheet ici
+            name: "",
+            url: "",
+            defaultSheet: "" // Ajouter l'attribut defaultSheet ici
           }
         ];
 
