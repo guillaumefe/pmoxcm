@@ -2306,6 +2306,35 @@ function copyEmailContent() {
     });
 }
 
+function copyEmailContent() {
+    const text = emailContent.textContent;
+    const textArea = document.createElement("textarea");
+    
+    textArea.value = text;
+    textArea.style.position = "fixed";  // Avoid scrolling to bottom
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            const copyButton = document.getElementById('copyEmailContent');
+            copyButton.textContent = 'Copied';
+            setTimeout(() => {
+                copyButton.textContent = 'Copy';
+            }, 5000);
+        } else {
+            showError('Failed to copy text');
+        }
+    } catch (err) {
+        showError('Failed to copy text: ' + err);
+    }
+
+    document.body.removeChild(textArea);
+}
+
+
     // Autres fonctions
 
     function generateYaml(addedRowsBySheet, modifiedRowsBySheet) {
