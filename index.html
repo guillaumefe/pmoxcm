@@ -402,6 +402,7 @@ label[for="searchMode"] {
         <div id="progressContainer" class="progress-message" style="display: none;">
             <span id="progressMessage"></span>
             <button id="resetButton" class="centered-button" style="display: none;">Reset Interface</button>
+            <button id="closeProgressButton" class="centered-button" style="display: none;margin-left: 10px;">Close</button>
         </div>
         <div class="overlay" id="overlay"></div>
         <div class="popup" id="popup">
@@ -478,6 +479,7 @@ Best regards,
     const progressContainer = document.getElementById('progressContainer');
     const progressMessage = document.getElementById('progressMessage');
     const resetButton = document.getElementById('resetButton');
+    const closeProgressButton = document.getElementById('closeProgressButton');
     const summarySection = document.getElementById('summarySection');
     const summarySeparator = document.getElementById('summarySeparator');
     const addedRows = document.getElementById('addedRows');
@@ -532,6 +534,9 @@ Best regards,
     dynamicForm.addEventListener('submit', handleFormSubmit);
     searchForm.addEventListener('submit', handleSearch);
     resetButton.addEventListener('click', resetInterface);
+    closeProgressButton.addEventListener('click', () => {
+      progressContainer.style.display = 'none';
+    });
     overlay.addEventListener('click', closePopup);
     prevRowButton.addEventListener('click', () => navigateRow(-1));
     nextRowButton.addEventListener('click', () => navigateRow(1));
@@ -2309,6 +2314,7 @@ function exitEditingMode() {
 
             showProgress("Email draft prepared successfully.");
             resetButton.style.display = 'block';
+            closeProgressButton.style.display = 'block';
         } catch (error) {
             showError("Failed to prepare the email: " + error.message);
         }
