@@ -2430,33 +2430,6 @@ function copyEmailContent() {
             showError(message);
             return;
         }
-
-        loadingIndicator.style.display = 'block';
-        showProgress("Adding new row...");
-        setTimeout(() => {
-            try {
-                const rowHash = CryptoJS.MD5(JSON.stringify(row)).toString();
-                addedRowsHashes.add(rowHash);
-
-                if (!addedRowsBySheet[currentFileName]) {
-                    addedRowsBySheet[currentFileName] = {};
-                }
-                if (!addedRowsBySheet[currentFileName][currentSheetName]) {
-                    addedRowsBySheet[currentFileName][currentSheetName] = {
-                        headers: headers,
-                        rows: []
-                    };
-                }
-                addedRowsBySheet[currentFileName][currentSheetName].rows.push(row);
-
-                updateSummaryDisplay();
-                showProgress("Row added successfully.");
-                loadingIndicator.style.display = 'none';
-            } catch (error) {
-                showError("Failed to add the row: " + error.message);
-                loadingIndicator.style.display = 'none';
-            }
-        }, 100);
     });
 
 function handleSearch(event) {
