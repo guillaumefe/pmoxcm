@@ -287,6 +287,27 @@ label[for="searchMode"] {
     padding: 5px;
     font-size: 1em;
 }
+
+.progress-message {
+    text-align: center;
+    font-weight: bold;
+    color: orange;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid orange;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+        
+.progress-message.error {
+    color: red;
+    border: 1px solid red;
+}
         
     </style>
 </head>
@@ -2514,6 +2535,16 @@ function searchRows(query, restrict) {
     }
 
     return results;
+}
+
+function showError(message) {
+    progressMessage.textContent = message;
+    progressContainer.style.display = 'block';
+    progressContainer.classList.add('error');
+    setTimeout(() => {
+        progressContainer.style.display = 'none';
+        progressContainer.classList.remove('error');
+    }, 5000); // Affiche le message pendant 5 secondes
 }
 
 document.addEventListener('DOMContentLoaded', () => {
