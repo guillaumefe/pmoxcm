@@ -258,6 +258,24 @@
             margin-bottom: 20px;
             display: none;
         }
+
+label[for="searchMode"] {
+    cursor: pointer;
+}
+.toggle-btn {
+    padding: 10px;
+    background: #007BFF;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
+.toggle-btn:hover {
+    background: #0056b3;
+}
+        
     </style>
 </head>
 <body>
@@ -303,18 +321,20 @@
             </form>
             <div id="loadingIndicator" class="loading-indicator">Adding row...</div>
         </section>
-        <section id="Search" class="tabcontent" style="display: none;">
-          <h2>Search and Edit</h2>
-          <p>Use the following operators to refine your search: && for AND, || for OR, and ! for NOT.</p>
-          <p><i>Example: "apple && orange" will find rows containing both "apple" and "orange". "apple || orange" will find rows containing either "apple" or "orange". "!apple" will find rows that do not contain "apple".</i></p>
-          <form id="searchForm">
-              <table class="form-inline, search-table">
-                  <tbody id="searchInputs"></tbody>
-              </table>
-              <label for="restrictSearch"><input type="checkbox" id="restrictSearch"> Restrict search to all keywords</label>
-              <button type="submit">Search</button>
-          </form>
-      </section>      
+<section id="Search" class="tabcontent" style="display: none;">
+    <h2>Search and Edit</h2>
+    <p>Use && for AND, || for OR, and ! for NOT.</p>
+    <p><i>Example: "apple && orange" will find rows containing both "apple" and "orange". "apple || orange" will find rows containing either "apple" or "orange". "!apple" will find rows that do not contain "apple".</i></p>      
+    <label for="searchMode">Search Mode:</label>
+    <button id="searchMode" class="toggle-btn">AND</button>
+    <form id="searchForm" class="form-inline">
+        <table class="search-table">
+            <tbody id="searchInputs"></tbody>
+        </table>
+        <label for="restrictSearch"><input type="checkbox" id="restrictSearch"> Restrict search to all keywords</label>
+        <button type="submit">Search</button>
+    </form>
+</section>
         <div id="results" class="result-container" style="display: none;">
             <h3>Search Results</h3>
             <div id="messageContainer" class="error-message" style="display: none;"></div>
@@ -2093,6 +2113,124 @@ function exitEditingMode() {
     submitEditButton.style.display = 'none';
     updateOkButtonText(false);
 }
+
+    const searchModeButton = document.getElementById('searchMode');
+    let searchMode = 'AND';
+
+    searchModeButton.addEventListener('click', () => {
+        if (searchMode === 'AND') {
+            searchMode = 'OR';
+            searchModeButton.textContent = 'OR';
+        } else {
+            searchMode = 'AND';
+            searchModeButton.textContent = 'AND';
+        }
+    });
+
+    searchForm.addEventListener('submit', handleSearch);
+
+    function handleSearch(event) {
+        event.preventDefault();
+        searchLoader.style.display = 'block';
+        const formData = new FormData(searchForm);
+        const query = {};
+        let hasAnyKeyword = false;
+        headers.forEach(header => {
+            const value = normalizeString(formData.get(header));
+            if (value) {
+                query[header] = value;
+                hasAnyKeyword = true;
+            }
+        });
+
+        if (!hasAnyKeyword) {
+            showError("Please enter at least one keyword.");
+            searchLoader.style.display = 'none';
+            return;
+        }
+
+        showProgress("Starting search...");
+        try {
+            searchResults = searchRows(query, searchMode === 'AND');
+            displayResults(searchResults);
+        } catch (error) {
+            showError("Failed to search: " + error.message);
+        } finally {
+            searchLoader.style.display = 'none';
+        }
+    }
+
+    function searchRows(query, restrict) {
+        const worksheet = workbook.Sheets[currentSheetName];
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const results = [];
+
+        for (let rowNum = range.s.r + 1; rowNum <= range.e.r; rowNum++) {
+            let rowMatch = restrict;
+            const row = {};
+
+            headers.forEach((header, index) => {
+                const cell = worksheet[XLSX.utils.encode_cell({ r: rowNum, c: index })];
+                const cellValue = cell ? normalizeString(cell.v) : '';
+                const queryValue = query[header] || '';
+
+                if (queryValue) {
+                    const queryParts = queryValue.split(/(&&|\|\||!)/).map(part => part.trim());
+                    let operator = null;
+
+                    for (let i = 0; i < queryParts.length; i++) {
+                        const part = queryParts[i];
+                        if (part === '&&') {
+                            operator = 'AND';
+                        } else if (part === '||') {
+                            operator = 'OR';
+                        } else if (part === '!') {
+                            operator = 'NOT';
+                        } else {
+                            let match;
+                            if (operator === 'NOT') {
+                                match = !cellValue.includes(part);
+                                operator = null;
+                            } else {
+                                match = cellValue.includes(part);
+                            }
+
+                            if (restrict) {
+                                if (operator === 'AND' && !match) {
+                                    rowMatch = false;
+                                } else if (operator === 'OR' && match) {
+                                    rowMatch = true;
+                                } else if (operator === null) {
+                                    rowMatch = rowMatch && match;
+                                }
+                            } else {
+                                if (operator === 'AND' && !match) {
+                                    rowMatch = false;
+                                } else if (operator === 'OR' && match) {
+                                    rowMatch = true;
+                                } else if (operator === null) {
+                                    rowMatch = rowMatch || match;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                row[header] = cell ? cell.v : '';
+            });
+
+            if (rowMatch) {
+                const rowHash = CryptoJS.MD5(JSON.stringify(row)).toString();
+                results.push({ rowNum, row, rowHash });
+            }
+
+            if (rowNum % 10 === 0) {
+                showProgress(`Processing row ${rowNum}...`);
+            }
+        }
+
+        return results;
+    }
 
 document.addEventListener('DOMContentLoaded', () => {
     const tablinks = document.getElementsByClassName("tablinks");
