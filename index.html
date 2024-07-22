@@ -2431,6 +2431,91 @@ function copyEmailContent() {
         }, 100);
     });
 
+function handleSearch(event) {
+    event.preventDefault();
+    showProgress("Starting search...");
+    searchLoader.style.display = 'block';
+
+    setTimeout(() => {
+        const formData = new FormData(searchForm);
+        const query = {};
+        headers.forEach(header => {
+            const value = normalizeString(formData.get(header));
+            if (value) {
+                query[header] = value;
+            }
+        });
+
+        try {
+            searchResults = searchRows(query, restrictSearch.checked);
+            displayResults(searchResults);
+        } catch (error) {
+            showError("Failed to search: " + error.message);
+        } finally {
+            searchLoader.style.display = 'none';
+        }
+    }, 500); // Délai pour simuler le chargement
+}
+
+function searchRows(query, restrict) {
+    const worksheet = workbook.Sheets[currentSheetName];
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    const results = [];
+    const hasQuery = Object.keys(query).length > 0;
+
+    for (let rowNum = range.s.r + 1; rowNum <= range.e.r; rowNum++) {
+        let rowMatch = !hasQuery; // Si aucun filtre n'est renseigné, affiche toutes les lignes
+        const row = {};
+
+        headers.forEach((header, index) => {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: rowNum, c: index })];
+            const cellValue = cell ? normalizeString(cell.v) : '';
+            const queryValue = query[header] || '';
+
+            if (queryValue) {
+                const queryParts = queryValue.split(/(&&|\|\||!)/).map(part => part.trim());
+                let operator = null;
+
+                for (let i = 0; i < queryParts.length; i++) {
+                    const part = queryParts[i];
+                    if (part === '&&') {
+                        operator = 'AND';
+                    } else if (part === '||') {
+                        operator = 'OR';
+                    } else if (part === '!') {
+                        operator = 'NOT';
+                    } else {
+                        let match;
+                        if (operator === 'NOT') {
+                            match = !cellValue.includes(part);
+                            operator = null;
+                        } else {
+                            match = cellValue.includes(part);
+                        }
+
+                        if (operator === 'AND' && !match) {
+                            rowMatch = false;
+                        } else if (operator === 'OR' && match) {
+                            rowMatch = true;
+                        } else if (operator === null) {
+                            rowMatch = match;
+                        }
+                    }
+                }
+            }
+
+            row[header] = cell ? cell.v : '';
+        });
+
+        if (rowMatch) {
+            const rowHash = CryptoJS.MD5(JSON.stringify(row)).toString();
+            results.push({ rowNum, row, rowHash });
+        }
+    }
+
+    return results;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const tablinks = document.getElementsByClassName("tablinks");
     if (tablinks.length > 0) {
