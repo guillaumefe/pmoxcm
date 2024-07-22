@@ -2293,14 +2293,18 @@ function exitEditingMode() {
         }
     }
 
-    function copyEmailContent() {
-        const text = emailContent.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            alert('Email content copied to clipboard');
-        }).catch(err => {
-            showError('Failed to copy text: ' + err);
-        });
-    }
+function copyEmailContent() {
+    const text = emailContent.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const copyButton = document.getElementById('copyEmailContent');
+        copyButton.textContent = 'Copied';
+        setTimeout(() => {
+            copyButton.textContent = 'Copy';
+        }, 5000);
+    }).catch(err => {
+        showError('Failed to copy text: ' + err);
+    });
+}
 
     // Autres fonctions
 
