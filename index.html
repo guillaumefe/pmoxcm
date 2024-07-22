@@ -342,18 +342,22 @@ label[for="searchMode"] {
             <div id="searchLoader" class="loader" style="display: none;"></div>
         </div>
         <hr id="summarySeparator">
-        <section id="summarySection" style="display: none;">
-            <h2>Summary of the modifications to be sent to PMO for validation</h2>
-            <div id="addedRowsContainer" style="display: none;">
-                <h3>Additions</h3>
-                <div id="addedRows"></div>
-            </div>
-            <div id="modifiedRowsContainer" style="display: none;">
-                <h3>Modifications</h3>
-                <div id="modifiedRows"></div>
-            </div>
-            <button id="generateFile">Generate Email</button>
-        </section>
+<section id="summarySection" style="display: none;">
+    <h2>Summary of the modifications to be sent to PMO for validation</h2>
+    <div id="addedRowsContainer" style="display: none;">
+        <h3>Additions</h3>
+        <div id="addedRows"></div>
+    </div>
+    <div id="modifiedRowsContainer" style="display: none;">
+        <h3>Modifications</h3>
+        <div id="modifiedRows"></div>
+    </div>
+    <button id="generateFile">Generate Email</button>
+    <div id="emailContentContainer" style="display: none;">
+        <button id="copyEmailContent" style="float: right;">Copy</button>
+        <pre id="emailContent"></pre>
+    </div>
+</section>
         <div id="progressContainer" class="progress-message" style="display: none;">
             <span id="progressMessage"></span>
             <button id="resetButton" class="centered-button" style="display: none;">Reset Interface</button>
@@ -427,7 +431,6 @@ Best regards,
     const loadingIndicator = document.getElementById('loadingIndicator');
     const addedRowsContainer = document.getElementById('addedRowsContainer');
     const modifiedRowsContainer = document.getElementById('modifiedRowsContainer');
-    const generateFileButton = document.getElementById('generateFile');
     const searchForm = document.getElementById('searchForm');
     const searchInputs = document.getElementById('searchInputs');
     const restrictSearch = document.getElementById('restrictSearch');
@@ -468,6 +471,14 @@ Best regards,
     populateFileSelect();
     loadFromLocalStorage(); // Charger les données depuis le local storage
 
+    const generateFileButton = document.getElementById('generateFile');
+    const emailContentContainer = document.getElementById('emailContentContainer');
+    const emailContent = document.getElementById('emailContent');
+    const copyEmailContentButton = document.getElementById('copyEmailContent');
+
+    generateFileButton.addEventListener('click', generateEmail);
+    copyEmailContentButton.addEventListener('click', copyEmailContent);
+
     fileSelect.addEventListener('change', handleFileSelection);
     downloadLink.addEventListener('click', handleDownloadClick);
     confirmDownloadButton.addEventListener('click', handleConfirmDownload);
@@ -475,7 +486,6 @@ Best regards,
     fileSubmit.addEventListener('click', handleFileSubmit);
     sheetSelectionForm.addEventListener('submit', handleSheetSelection);
     dynamicForm.addEventListener('submit', handleFormSubmit);
-    generateFileButton.addEventListener('click', generateEmail);
     searchForm.addEventListener('submit', handleSearch);
     resetButton.addEventListener('click', resetInterface);
     overlay.addEventListener('click', closePopup);
@@ -2230,6 +2240,84 @@ function exitEditingMode() {
         }
 
         return results;
+    }
+
+    function generateEmail() {
+        try {
+            const yamlBody = generateYaml(addedRowsBySheet, modifiedRowsBySheet);
+            const summary = generateSummary(addedRowsBySheet, modifiedRowsBySheet);
+            const allFiles = [...new Set([...Object.keys(addedRowsBySheet), ...Object.keys(modifiedRowsBySheet)])]; // Ensure unique file names
+            const subject = encodeURIComponent(`Request for change: ${allFiles.join(', ')}`);
+
+            // Remplacer les placeholders dans EMAIL_TEMPLATE
+            const emailBody = EMAIL_TEMPLATE
+                .replace('{FILES_LIST}', allFiles.join(', '))
+                .replace('{SUMMARY}', summary)
+                .replace('{MODIFICATIONS}', yamlBody);
+
+            const body = encodeURIComponent(emailBody);
+            const mailtoLink = `mailto:${EMAILS.join(',')}?cc=${CC_EMAILS.join(',')}&subject=${subject}&body=${body}`;
+            window.location.href = mailtoLink;
+
+            // Afficher le texte généré dans la balise <pre>
+            emailContent.textContent = emailBody;
+            emailContentContainer.style.display = 'block';
+
+            showProgress("Email draft prepared successfully.");
+            resetButton.style.display = 'block';
+        } catch (error) {
+            showError("Failed to prepare the email: " + error.message);
+        }
+    }
+
+    function copyEmailContent() {
+        const text = emailContent.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Email content copied to clipboard');
+        }).catch(err => {
+            showError('Failed to copy text: ' + err);
+        });
+    }
+
+    // Autres fonctions
+
+    function generateYaml(addedRowsBySheet, modifiedRowsBySheet) {
+        let yamlString = '';
+
+        Object.keys(addedRowsBySheet).forEach(fileName => {
+            Object.keys(addedRowsBySheet[fileName]).forEach(sheetName => {
+                const { headers, rows } = addedRowsBySheet[fileName][sheetName];
+                rows.forEach(row => {
+                    yamlString += drawBox(`File: ${fileName}\nSheet: ${sheetName}\n${formatRow(row)}`) + '\n\n'; // Ajout d'un saut de ligne
+                });
+            });
+        });
+
+        Object.keys(modifiedRowsBySheet).forEach(fileName => {
+            Object.keys(modifiedRowsBySheet[fileName]).forEach(sheetName => {
+                Object.values(modifiedRowsBySheet[fileName][sheetName]).forEach(row => {
+                    yamlString += drawBox(`File: ${fileName}\nSheet: ${sheetName}\n${formatRow(row)}`) + '\n\n'; // Ajout d'un saut de ligne
+                });
+            });
+        });
+
+        return yamlString;
+    }
+
+    function formatRow(row) {
+        return Object.entries(row)
+            .map(([key, value]) => drawBox(`  ${key}:\n    ${String(value).split('\n').join('\n    ')}`))
+            .join('\n');
+    }
+
+    function drawBox(content) {
+        const lines = content.split('\n');
+        const width = Math.max(...lines.map(line => line.length));
+        const horizontalBorder = `+${'-'.repeat(width + 2)}+`;
+
+        const formattedLines = lines.map(line => `| ${line.padEnd(width)} |`);
+
+        return [horizontalBorder, ...formattedLines, horizontalBorder].join('\n');
     }
 
 document.addEventListener('DOMContentLoaded', () => {
