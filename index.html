@@ -275,6 +275,18 @@ label[for="searchMode"] {
 .toggle-btn:hover {
     background: #0056b3;
 }
+
+.title-row,
+.search-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-input {
+    padding: 5px;
+    font-size: 1em;
+}
         
     </style>
 </head>
@@ -313,20 +325,27 @@ label[for="searchMode"] {
             <button class="tablinks active" onclick="openTab(event, 'AddRow')">Add a New Row</button>
             <button class="tablinks" onclick="openTab(event, 'Search')">Search</button>
         </div>
-        <section id="AddRow" class="tabcontent" style="display: none;">
-            <h2>Add a New Row</h2>
-            <form id="dynamicForm">
-                <button type="button" id="clearFormButton" class="clear-form-button">Clear Form</button>
-                <button type="submit">Add Row</button>
-            </form>
-            <div id="loadingIndicator" class="loading-indicator">Adding row...</div>
-        </section>
+<section id="AddRow" class="tabcontent" style="display: none;">
+    <div class="title-row">
+        <h2>Add a New Row</h2>
+        <input type="text" id="addRowFilter" placeholder="Filter fields..." class="filter-input">
+    </div>
+    <form id="dynamicForm">
+        <button type="button" id="clearFormButton" class="clear-form-button">Clear Form</button>
+        <button type="submit">Add Row</button>
+    </form>
+    <div id="loadingIndicator" class="loading-indicator">Adding row...</div>
+</section>
+
 <section id="Search" class="tabcontent" style="display: none;">
     <h2>Search and Edit</h2>
+    <div class="search-row">
+        <label for="searchMode">Search Mode:</label>
+        <button id="searchMode" class="toggle-btn">AND</button>
+        <input type="text" id="searchFilter" placeholder="Filter columns..." class="filter-input">
+    </div>
     <p>Use && for AND, || for OR, and ! for NOT.</p>
-    <p><i>Example: "apple && orange" will find rows containing both "apple" and "orange". "apple || orange" will find rows containing either "apple" or "orange". "!apple" will find rows that do not contain "apple".</i></p>      
-    <label for="searchMode">Search Mode:</label>
-    <button id="searchMode" class="toggle-btn">AND</button>
+    <p><i>Example: "apple && orange" will find rows containing both "apple" and "orange". "apple || orange" will find rows containing either "apple" or "orange". "!apple" will find rows that do not contain "apple".</i></p>
     <form id="searchForm" class="form-inline">
         <table class="search-table">
             <tbody id="searchInputs"></tbody>
@@ -335,6 +354,7 @@ label[for="searchMode"] {
         <button type="submit">Search</button>
     </form>
 </section>
+
         <div id="results" class="result-container" style="display: none;">
             <h3>Search Results</h3>
             <form id="editForm"></form>
@@ -427,12 +447,10 @@ Best regards,
     const sheetSelectionSection = document.getElementById('sheetSelectionSection');
     const sheetSelectionForm = document.getElementById('sheetSelectionForm');
     const sheetSelect = document.getElementById('sheetSelect');
-    const dynamicForm = document.getElementById('dynamicForm');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const addedRowsContainer = document.getElementById('addedRowsContainer');
     const modifiedRowsContainer = document.getElementById('modifiedRowsContainer');
     const searchForm = document.getElementById('searchForm');
-    const searchInputs = document.getElementById('searchInputs');
     const restrictSearch = document.getElementById('restrictSearch');
     const results = document.getElementById('results');
     const editForm = document.getElementById('editForm');
@@ -475,6 +493,11 @@ Best regards,
     const emailContentContainer = document.getElementById('emailContentContainer');
     const emailContent = document.getElementById('emailContent');
     const copyEmailContentButton = document.getElementById('copyEmailContent');
+
+    const searchFilterInput = document.getElementById('searchFilter');
+    const addRowFilterInput = document.getElementById('addRowFilter');
+    const searchInputs = document.getElementById('searchInputs');
+    const dynamicForm = document.getElementById('dynamicForm');
 
     generateFileButton.addEventListener('click', generateEmail);
     copyEmailContentButton.addEventListener('click', copyEmailContent);
@@ -2319,6 +2342,90 @@ function exitEditingMode() {
 
         return [horizontalBorder, ...formattedLines, horizontalBorder].join('\n');
     }
+
+    // Event listener for search filter input
+    searchFilterInput.addEventListener('input', () => {
+        const filter = searchFilterInput.value.toLowerCase();
+        const rows = searchInputs.querySelectorAll('tr');
+        rows.forEach(row => {
+            const label = row.querySelector('label').textContent.toLowerCase();
+            if (label.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Event listener for add row filter input
+    addRowFilterInput.addEventListener('input', () => {
+        const filter = addRowFilterInput.value.toLowerCase();
+        const fields = dynamicForm.querySelectorAll('label, textarea');
+        fields.forEach((field, index) => {
+            if (index % 2 === 0) {
+                const label = field.textContent.toLowerCase();
+                if (label.includes(filter)) {
+                    field.style.display = '';
+                    fields[index + 1].style.display = '';
+                } else {
+                    field.style.display = 'none';
+                    fields[index + 1].style.display = 'none';
+                }
+            }
+        });
+    });
+
+    dynamicForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const formData = new FormData(dynamicForm);
+        const row = {};
+        let hasEmptyFields = false;
+        let filtered = addRowFilterInput.value.trim() !== '';
+
+        headers.forEach(header => {
+            const value = formData.get(header);
+            if (!value) {
+                hasEmptyFields = true;
+            }
+            row[header] = value;
+        });
+
+        if (hasEmptyFields) {
+            let message = "All fields must be filled out.";
+            if (filtered) {
+                message += " Please clear the field filter to see which fields need to be completed.";
+            }
+            showError(message);
+            return;
+        }
+
+        loadingIndicator.style.display = 'block';
+        showProgress("Adding new row...");
+        setTimeout(() => {
+            try {
+                const rowHash = CryptoJS.MD5(JSON.stringify(row)).toString();
+                addedRowsHashes.add(rowHash);
+
+                if (!addedRowsBySheet[currentFileName]) {
+                    addedRowsBySheet[currentFileName] = {};
+                }
+                if (!addedRowsBySheet[currentFileName][currentSheetName]) {
+                    addedRowsBySheet[currentFileName][currentSheetName] = {
+                        headers: headers,
+                        rows: []
+                    };
+                }
+                addedRowsBySheet[currentFileName][currentSheetName].rows.push(row);
+
+                updateSummaryDisplay();
+                showProgress("Row added successfully.");
+                loadingIndicator.style.display = 'none';
+            } catch (error) {
+                showError("Failed to add the row: " + error.message);
+                loadingIndicator.style.display = 'none';
+            }
+        }, 100);
+    });
 
 document.addEventListener('DOMContentLoaded', () => {
     const tablinks = document.getElementsByClassName("tablinks");
