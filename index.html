@@ -402,7 +402,7 @@ label[for="searchMode"] {
         <div id="progressContainer" class="progress-message" style="display: none;">
             <span id="progressMessage"></span>
             <button id="resetButton" class="centered-button" style="display: none;">Reset Interface</button>
-            <button id="closeProgressButton" class="centered-button" style="display: none;margin-left: 10px;">Close</button>
+            <button id="closeProgressButton" class="centered-button" style="display: none;">Close</button>
         </div>
         <div class="overlay" id="overlay"></div>
         <div class="popup" id="popup">
@@ -1361,10 +1361,10 @@ function showSheetSelection(sheetNames, defaultSheetName) {
     }
 
     function showProgress(message) {
+        resetButton.style.display = 'none';
+        closeProgressButton.style.display = 'none';
         progressMessage.textContent = message;
         progressContainer.style.display = 'block';
-        messageContainer.style.display = 'block';
-        messageContainer.textContent = message;
         setTimeout(() => {
             messageContainer.textContent = '';
         }, 5000);
@@ -1778,6 +1778,9 @@ function handleFormSubmit(event) {
             updateSummaryDisplay();
             showProgress("Row added successfully.");
             loadingIndicator.style.display = 'none';
+            setTimeout(() => {
+              clearMessages();
+            }, 3000)
         } catch (error) {
             showError("Failed to add the row: " + error.message);
             loadingIndicator.style.display = 'none';
@@ -1831,6 +1834,9 @@ function submitEdit() {
     updateSummaryDisplay();
     closePopup();
     showProgress('Change submitted.');
+    setTimeout(() => {
+          clearMessages();
+    }, 3000)
 }
 
 
@@ -2430,6 +2436,7 @@ function copyEmailContent() {
             showError(message);
             return;
         }
+
     });
 
 function handleSearch(event) {
